@@ -34,6 +34,8 @@ sub new {
         login_url   => $login_url,
         submit_url  => $submit_url,
 
+		comment_url => $comment_url,
+
         api_type    => $api_type,
 
         user        => $user,
@@ -45,6 +47,9 @@ sub new {
         cookie_jar  => HTTP::Cookies->new,
 
         modhash     => '',
+		
+		comment_reply => 't1_',
+		link_reply	=> 't3_',
     };
 
     bless $self, $class;
@@ -177,6 +182,26 @@ sub submit_story {
     return $id, $link;
 }
 
+sub comment {
+	my $self = shift;
+	my ($type, $post_id, $comment) = @_;
+
+	my $thing_id = $type . $post_id;
+
+	my $response = $self->ua->post($self->comment_url,
+		{
+			thing_id	=> $thing_id,
+			text		=> $comment,
+			uh			=> $self->modhash,
+		},
+	);
+
+	my $decoded = from_json $response->content;
+	return $decoded->{jquery}[18][3][0][0];
+}
+
+
+
 1;
 __END__
 
@@ -198,6 +223,12 @@ Reddit - Perl extension for http://www.reddit.com
   # This overrides a subreddit set previously
   $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
 
+  # Post a top level comment to a URL or .self post 
+  $r->comment($r->link_reply, $post_id, $comment);
+  
+  # Post a reply to a comment
+  $r->comment($r->comment_reply, $comment_id, $comment);
+  
 =head1 DESCRIPTION
 
 Perl module for interacting with Reddit.
@@ -219,6 +250,18 @@ This module is still largely inprogress.
 
 None.
 
+=head1 Provided Methods
+
+=item B<comment($post_type, $post_id, $comment)>
+   
+To post a top level comment to a URL or .self post 
+     $r->comment($r->link_reply, $post_id, $comment);
+
+To post a reply to a comment
+  $r->comment($r->comment_reply, $comment_id, $comment);
+
+The post_id is the alphanumeric string after the name of the subreddit, before the title of the post
+The comment_id is the alphanumeric string after the title of the post
 
 =head1 SEE ALSO
 
