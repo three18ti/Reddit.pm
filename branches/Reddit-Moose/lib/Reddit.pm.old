@@ -7,7 +7,9 @@ use Data::Dumper;
 
 use common::sense;
 
+use LWP::Simple;
 use JSON;
+
 use HTTP::Cookies;
 use LWP::UserAgent;
 
@@ -29,10 +31,10 @@ sub new {
         base_url    => $base_url,
         api_url     => $api_url,
         
-        login_api   => $login_url,
-        submit_api  => $submit_url,
+        login_url   => $login_url,
+        submit_url  => $submit_url,
 
-		comment_api => $comment_url,
+		comment_url => $comment_url,
 
         api_type    => $api_type,
 
@@ -113,7 +115,7 @@ sub login {
         $self->user ($_[0]);
         $self->passwd ($_[1]);
     }
-    my $response = $self->ua->post($self->login_api,
+    my $response = $self->ua->post($self->login_url,
         {
             api_type    => $self->api_type,
             user        => $self->user,
@@ -132,7 +134,7 @@ sub submit_link {
 
     my $kind        = 'link';
 
-    my $newpost     = $self->ua->post($self->submit_api,
+    my $newpost     = $self->ua->post($self->submit_url,
         {
             uh      => $self->modhash,
             kind    => $kind,
@@ -156,8 +158,10 @@ sub submit_link {
 sub submit_story {
     my $self = shift;
     my ($title, $text, $subreddit) = @_;
+
     my $kind        = 'self';
-    my $newpost     = $self->ua->post($self->submit_api,
+
+    my $newpost     = $self->ua->post($self->submit_url,
         {
             uh       => $self->modhash,
             kind     => $kind,
@@ -167,11 +171,14 @@ sub submit_story {
             text     => $text,
         },
     );
+
     my $json_content    = $newpost->content;
     my $decoded         = from_json $json_content;
+
     #returns id and link to new post if successful
     my $link = $decoded->{jquery}[12][3][0];
     my $id = $self->parse_link($link);
+
     return $id, $link;
 }
 
@@ -181,7 +188,7 @@ sub comment {
 
 	my $thing_id = $type . $post_id;
 
-	my $response = $self->ua->post($self->comment_api,
+	my $response = $self->ua->post($self->comment_url,
 		{
 			thing_id	=> $thing_id,
 			text		=> $comment,
