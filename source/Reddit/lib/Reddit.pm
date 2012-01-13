@@ -1,6 +1,6 @@
 package Reddit;
 
-our $VERSION = '0.12';
+our $VERSION = '0.20.moose';
 
 use 5.012004;
 use Data::Dumper;
@@ -11,109 +11,87 @@ use JSON;
 use HTTP::Cookies;
 use LWP::UserAgent;
 
-my $base_url        = 'http://www.reddit.com/';
-my $api_url         = $base_url . 'api/';
-my $login_url       = $api_url . 'login';
-my $submit_url      = $api_url . 'submit';
-my $comment_url     = $api_url . 'comment';
+use Moose;
 
-my $api_type        = 'json';
+has 'base_url' => (
+	is	=> 'ro',
+	isa => 'Str',
+	default => 'http://www.reddit.com/',
+);
 
-sub new {
-    my $obj_class       = shift;
-    my $class = ref $obj_class || $obj_class;
-        
-    my ($user, $passwd, $subreddit) = @_;
+has 'api_url' => (
+	is	=> 'ro',
+	isa => 'Str',
+	lazy	=> 1,
+	default => sub { $_[0]->base_url . 'api/' },
+);
 
-    my $self = {
-        base_url    => $base_url,
-        api_url     => $api_url,
-        
-        login_api   => $login_url,
-        submit_api  => $submit_url,
+has 'login_api' => (
+	is => 'ro',
+	isa => 'Str',
+	lazy	=> 1,
+	default => sub { $_[0]->api_url . 'login' },
+); 
 
-		comment_api => $comment_url,
+has 'submit_api' => (
+	is => 'ro',
+	isa => 'Str',
+	lazy	=> 1,
+	default => sub { $_[0]->api_url . 'submit' },	
+);
 
-        api_type    => $api_type,
+has 'comment_api' => (
+	is => 'ro',
+	isa => 'Str',
+	lazy	=> 1,
+	default => sub { $_[0]->api_url . 'comment' },	
+);
 
-        user        => $user,
-        passwd      => $passwd,
+has 'api_type'	=> (
+	is => 'ro',
+	isa => 'Str',
+	default => 'json',
+);
 
-        subreddit   => $subreddit,
+has 'ua' => (
+    is  => 'rw',
+    isa => 'LWP::UserAgent',
+    default => sub { LWP::UserAgent->new },
+#    handles => qr/^(?:head|get|post|agent|request.*)/,
+	handles => { 
+		post				=> 'post',
+		agent_cookie_jar 	=> 'cookie_jar' 
+	}
+);
 
-        ua          => new LWP::UserAgent,
-        cookie_jar  => HTTP::Cookies->new,
+has 'cookie_jar' => (
+	is => 'rw',
+	isa => 'HTTP::Cookies',
+	lazy => 1,
+	default => sub { HTTP::Cookies->new },	
+);
 
-        modhash     => '',
-		
-		comment_reply => 't1_',
-		link_reply	=> 't3_',
-    };
+has [ 'user', 'passwd', ] => (
+	is => 'rw',
+	isa => 'Str',
+	required => 1,	
+	trigger => \&_login,
+);
 
-    bless $self, $class;
-    
-    $self->create_methods;
-    return $self;
-}
+has 'subreddit' => (
+	is => 'rw',
+	isa => 'Str',
+);
 
-#>-----------------------------------------------<#
-#  Helper Methods
-#>-----------------------------------------------<#
+has 'modhash' => (
+	is => 'rw',
+	isa => 'Str',
+);
 
-# create accessor/mutator methods for defined parameters
-sub create_methods {
-    my $self = shift;
-    for my $datum (keys %{$self}) {
-        no strict "refs";
-        *$datum = sub {
-            my $self = shift;
-            $self->{$datum} = shift if @_;
-            return $self->{$datum};
-        };
-    }
-}
-
-# Set cookie 
-sub set_cookie {
-    my $self        = shift;
-    my $response    = shift;    
-
-    $self->cookie_jar->extract_cookies ($response);
-    $self->ua->cookie_jar ($self->cookie_jar);
-    $self->parse_modhash ($response);
-}
-
-# Set modhash
-sub parse_modhash {
-    my $self        = shift;
-    my $response    = shift;
-
-    my $decoded = from_json ($response->content);
-    $self->modhash ($decoded->{json}{data}{modhash});
-}
-
-# takes link, returns post ID
-sub parse_link {
-    my $self = shift;
-    my $link = shift;
-
-    my ($id) = $link =~ /comments\/(\w+)\//i;
-    return $id;
-}
-
-#>---------------------------------------------------<#
-#  Main Methods
-#>---------------------------------------------------<#
-
-# Login to reddit
-sub login {
-    my $self = shift;
-    
-    if (@_) {
-        $self->user ($_[0]);
-        $self->passwd ($_[1]);
-    }
-    my $response = $self->ua->post($self->login_api,
+sub _login {
+	my $self = shift;
+	
+	my $response = $self->ua->post($self->login_api,
         {
             api_type    => $self->api_type,
             user        => $self->user,
@@ -121,8 +99,32 @@ sub login {
         }
     );
 
-    $self->set_cookie( $response);
-#   print Dumper $response;
+    $self->_set_cookie($response);
+}
+
+sub _set_cookie {
+    my $self        = shift;
+    my $response    = shift;
+
+    $self->cookie_jar->extract_cookies ($response);
+    $self->agent_cookie_jar ($self->cookie_jar);
+    $self->_parse_modhash ($response);
+}
+
+sub _parse_modhash {
+    my $self        = shift;
+    my $response    = shift;
+
+    my $decoded = from_json ($response->content);
+    $self->modhash ($decoded->{json}{data}{modhash});
+}
+
+sub _parse_link {
+    my $self = shift;
+    my $link = shift;
+
+    my ($id) = $link =~ /comments\/(\w+)\//i;
+    return 't3_' . $id;
 }
 
 # Submit link to reddit
@@ -156,8 +158,9 @@ sub submit_link {
 sub submit_story {
     my $self = shift;
     my ($title, $text, $subreddit) = @_;
+ 
     my $kind        = 'self';
-    my $newpost     = $self->ua->post($self->submit_api,
+    my $newpost     = $self->post($self->submit_api,
         {
             uh       => $self->modhash,
             kind     => $kind,
@@ -167,109 +170,36 @@ sub submit_story {
             text     => $text,
         },
     );
+
     my $json_content    = $newpost->content;
     my $decoded         = from_json $json_content;
+
     #returns id and link to new post if successful
     my $link = $decoded->{jquery}[12][3][0];
-    my $id = $self->parse_link($link);
+    my $id = $self->_parse_link($link);
+
     return $id, $link;
 }
 
 sub comment {
-	my $self = shift;
-	my ($type, $post_id, $comment) = @_;
+    my $self = shift;
+    my ($thing_id, $comment) = @_;
 
-	my $thing_id = $type . $post_id;
+    my $response = $self->ua->post($self->comment_api,
+        {
+            thing_id    => $thing_id,
+            text        => $comment,
+            uh          => $self->modhash,
+        },
+    );
 
-	my $response = $self->ua->post($self->comment_api,
-		{
-			thing_id	=> $thing_id,
-			text		=> $comment,
-			uh			=> $self->modhash,
-		},
-	);
-
-	my $decoded = from_json $response->content;
-	return $decoded->{jquery}[18][3][0][0];
+    my $decoded = from_json $response->content;
+    return $decoded->{jquery}[18][3][0][0]->{data}{id};
 }
 
 
+no Moose;
+__PACKAGE__->meta->make_immutable;
 
 1;
 __END__
-
-=head1 NAME
-
-Reddit - Perl extension for http://www.reddit.com
-
-=head1 SYNOPSIS
-
-  use Reddit;
-  
-  # $username, $password, [$subreddit]
-  $r = Reddit->new('Foo', 'Bar', 'Perl');
-
-  # optionally, you may specify $username, $passwd and $subreddit here
-  $r->login;
-
-  # $title, $url, [$subreddit]
-  # This overrides a subreddit set previously
-  $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
-
-  # Post a top level comment to a URL or .self post 
-  $r->comment($r->link_reply, $post_id, $comment);
-  
-  # Post a reply to a comment
-  $r->comment($r->comment_reply, $comment_id, $comment);
-  
-=head1 DESCRIPTION
-
-Perl module for interacting with Reddit.
-
-This module is still largely inprogress.
-
-=head2 Requires
-
-  common::sense
-  LWP::Simple
-  LWP::UserAgent
-  JSON
-  HTTP::Cookies
-
-  For Testing:
-  Data::Dumper
-
-=head2 EXPORT
-
-None.
-
-=head1 Provided Methods
-
-=item B<comment($post_type, $post_id, $comment)>
-   
-To post a top level comment to a URL or .self post 
-     $r->comment($r->link_reply, $post_id, $comment);
-
-To post a reply to a comment
-  $r->comment($r->comment_reply, $comment_id, $comment);
-
-The post_id is the alphanumeric string after the name of the subreddit, before the title of the post
-The comment_id is the alphanumeric string after the title of the post
-
-=head1 SEE ALSO
-
-https://github.com/reddit/reddit/wiki
-
-=head1 AUTHOR
-
-Jon A, E<lt>info[replacewithat]cyberspacelogistics[replacewithdot]comE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2011 by jon
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.12.4 or,
-at your option, any later version of Perl 5 you may have available.
-
-=cut

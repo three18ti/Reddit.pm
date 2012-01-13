@@ -183,7 +183,7 @@ sub submit_story {
 
 sub comment {
     my $self = shift;
-    my ($post_id, $comment) = @_;
+    my ($thing_id, $comment) = @_;
 
     my $response = $self->ua->post($self->comment_api,
         {
@@ -194,7 +194,7 @@ sub comment {
     );
 
     my $decoded = from_json $response->content;
-    return $decoded->{jquery}[18][3][0][0];
+    return $decoded->{jquery}[18][3][0][0]->{data}{id};
 }
 
 
