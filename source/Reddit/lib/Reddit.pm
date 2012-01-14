@@ -239,10 +239,10 @@ sub get_user_info {
 	my $response = $self->get ($self->about_user_api);
 	my $decoded = from_json $response->content;
 	my $data = $decoded->{data};
-	print Dumper $data	;
 
-	foreach my $value ( values %$result ) {
+	for my $value ( values %{$data} ) {
     	next unless 'JSON::XS::Boolean' eq ref $value;
+		say "some shit";
     	$value = $value ? '1' : '0' ;
 	}
 
