@@ -13,6 +13,10 @@ use LWP::UserAgent;
 
 use Moose;
 
+use lib './';
+use Reddit::Type::User;
+#use Reddit::Type::Subreddit;
+
 has 'base_url' => (
 	is	=> 'ro',
 	isa => 'Str',
@@ -60,6 +64,7 @@ has 'ua' => (
 #    handles => qr/^(?:head|get|post|agent|request.*)/,
 	handles => { 
 		post				=> 'post',
+		get					=> 'get',
 		agent_cookie_jar 	=> 'cookie_jar' 
 	}
 );
@@ -86,6 +91,27 @@ has 'subreddit' => (
 has 'modhash' => (
 	is => 'rw',
 	isa => 'Str',
+);
+
+has '_user_search_name' => (
+	is => 'rw',
+	isa => 'Str',
+	lazy => 1,
+	default => '',
+);
+
+has 'about_user_api' => (
+	is => 'rw',
+	isa => 'Str',
+	lazy => 1,
+	default => sub { $_[0]->base_url . 'user/' . $_[0]->_user_search_name . '/about.json' },
+);
+
+has 'user_info' => (
+	is => 'rw',
+	isa => 'Reddit::Type::User',
+	lazy => 1,
+	default => sub { Reddit::Type::User->new },
 );
 
 sub _login {
@@ -197,6 +223,22 @@ sub comment {
     return $decoded->{jquery}[18][3][0][0]->{data}{id};
 }
 
+sub get_user_info {
+	my $self = shift;
+	my $search_name = shift;
+
+	$self->_user_search_name($search_name);
+
+	my $response = $self->get ($self->about_user_api);
+	my $decoded = from_json $response->content;
+	my $data = $decoded->{data};
+	print Dumper $data	;
+
+	while (my ($key, $value) = each %{$data}) {
+		$self->user_info->$key("$value");	
+	}
+	return $self->user_info;
+}
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
