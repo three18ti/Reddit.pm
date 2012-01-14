@@ -8,7 +8,6 @@ WriteMakefile(
     VERSION_FROM      => 'lib/Reddit.pm', # finds $VERSION
 
     PREREQ_PM         => {
-        'LWP::Simple'     => 0,
         'LWP::UserAgent'  => 0,
         'JSON'            => 0,
         'HTTP::Cookies'   => 0,
