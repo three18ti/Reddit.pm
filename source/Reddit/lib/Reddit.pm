@@ -211,7 +211,7 @@ sub comment {
     my $self = shift;
     my ($thing_id, $comment) = @_;
 
-    my $response = $self->ua->post($self->comment_api,
+    my $response = $self->post($self->comment_api,
         {
             thing_id    => $thing_id,
             text        => $comment,
@@ -238,6 +238,35 @@ sub get_user_info {
 		$self->user_info->$key("$value");	
 	}
 	return $self->user_info;
+}
+
+sub vote {
+	my $self = shift; 
+	my ($thing_id, $direction) = @_;
+	
+	given ($direction) {
+		when ( /up/i || 1) {
+			$direction = 1;
+		}
+		when ( /down/i || -1) {
+			$direction = -1;
+		}
+		when ( /rescind/i || 0 ) {
+			$direction = 0;
+		}
+		default {
+			warn "Please enter a valid direction";
+			return 0;
+		}
+	}
+
+	my $response = $self->post ( $self->vote_api, 
+		{
+			id	=> $thing_id,
+			dir => $direction,
+			uh	=> $self->modhash
+		}
+	);
 }
 
 no Moose;
