@@ -285,7 +285,7 @@ The comment_id is the alphanumeric string after the title of the post
 
 =head1 SEE ALSO
 
-https://github.com/reddit/reddit/wiki
+L<https://github.com/reddit/reddit/wiki>
 
 =head1 AUTHOR
 
