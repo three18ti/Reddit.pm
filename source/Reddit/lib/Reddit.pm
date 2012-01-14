@@ -51,6 +51,13 @@ has 'comment_api' => (
 	default => sub { $_[0]->api_url . 'comment' },	
 );
 
+has 'vote_api' => (
+	is => 'ro',
+	isa => 'Str',
+	lazy	=> 1,
+	default => sub { $_[0]->api_url . 'vote' },	
+);
+
 has 'api_type'	=> (
 	is => 'ro',
 	isa => 'Str',
@@ -267,6 +274,8 @@ sub vote {
 			uh	=> $self->modhash
 		}
 	);
+	
+	return $response->content;
 }
 
 no Moose;
