@@ -240,14 +240,11 @@ sub get_user_info {
 	my $decoded = from_json $response->content;
 	my $data = $decoded->{data};
 
-	for my $value ( values %{$data} ) {
-    	next unless 'JSON::XS::Boolean' eq ref $value;
-		say "some shit";
-    	$value = $value ? '1' : '0' ;
-	}
-
 	while (my ($key, $value) = each %{$data}) {
-		$self->user_info->$key("$value");	
+   		if (ref $value eq 'JSON::XS::Boolean'){
+	    	$value = $value ? '1' : '0' ;
+		}
+		$self->user_info->$key($value);	
 	}
 	return $self->user_info;
 }
@@ -282,6 +279,8 @@ sub vote {
 	
 	return $response->content;
 }
+
+
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
