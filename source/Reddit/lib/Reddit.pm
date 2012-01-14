@@ -241,6 +241,11 @@ sub get_user_info {
 	my $data = $decoded->{data};
 	print Dumper $data	;
 
+	foreach my $value ( values %$result ) {
+    	next unless 'JSON::XS::Boolean' eq ref $value;
+    	$value = $value ? '1' : '0' ;
+	}
+
 	while (my ($key, $value) = each %{$data}) {
 		$self->user_info->$key("$value");	
 	}
