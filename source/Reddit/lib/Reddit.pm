@@ -241,7 +241,7 @@ sub get_user_info {
 	my $data = $decoded->{data};
 
 	while (my ($key, $value) = each %{$data}) {
-   		if (ref $value eq 'JSON::XS::Boolean'){
+   		if (JSON::is_bool ref $value){
 	    	$value = $value ? '1' : '0' ;
 		}
 		$self->user_info->$key($value);	
