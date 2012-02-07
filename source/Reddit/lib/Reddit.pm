@@ -1,6 +1,6 @@
 package Reddit;
 
-our $VERSION = '0.30';
+our $VERSION = '0.3.01';
 
 use 5.012004;
 use Data::Dumper;
@@ -291,6 +291,8 @@ __END__
 =head1 NAME
 
 Reddit - Perl extension for http://www.reddit.com
+
+See github for the most up to date version: https://github.com/three18ti/Reddit.pm
 
 =head1 SYNOPSIS
 
