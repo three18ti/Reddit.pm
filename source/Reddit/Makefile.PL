@@ -13,7 +13,7 @@ WriteMakefile(
         'HTTP::Cookies'   => 0,
         'Data::Dumper'    => 0,
         'common::sense'   => 0,
-
+        'Moose'           => 0,
     }, # e.g., Module::Name => 1.1
 
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
