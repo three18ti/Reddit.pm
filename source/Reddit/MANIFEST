@@ -1,9 +1,9 @@
 Changes
-Makefile.PL
-MANIFEST
-README
-t/Reddit.t
 lib/Reddit.pm
-lib/Reddit/Type/Subreddit.pm
-lib/Reddit/Type/User.pm
-META.yml                                 Module meta-data (added by MakeMaker)
+Makefile.PL
+MANIFEST			This list of files
+README
+t/00-load.t
+t/manifest.t
+t/pod-coverage.t
+t/pod.t

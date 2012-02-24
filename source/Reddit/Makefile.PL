@@ -1,22 +1,20 @@
-use 5.012004;
-use ExtUtils::MakeMaker;
-use warnings;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
-WriteMakefile(
-    NAME              => 'Reddit',
-    VERSION_FROM      => 'lib/Reddit.pm', # finds $VERSION
+use inc::Module::Install;
 
-    PREREQ_PM         => {
-        'LWP::UserAgent'  => 0,
-        'JSON'            => 0,
-        'HTTP::Cookies'   => 0,
-        'Data::Dumper'    => 0,
-        'common::sense'   => 0,
-        'Moose'           => 0,
-    }, # e.g., Module::Name => 1.1
+name     'Reddit';
+all_from 'lib/Reddit.pm';
+author   q{Jon A <three18ti@gmail.com>};
+license  'perl';
 
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Reddit.pm', # retrieve abstract from module
-       AUTHOR         => 'jon <jon@>') : ()),
-);
+build_requires 'Test::More';
+
+requires 'LWP'              => '6.02';
+requires 'LWP::UserAgent'   => '6.02';
+requires 'JSON'             => '2.53';
+requires 'HTTP::Cookies'    => '6.00';
+requires 'Moose'            => '2.0200';
+requires 'common::sense'    => '3.4';
+
+auto_install;
+
+WriteAll;
+
