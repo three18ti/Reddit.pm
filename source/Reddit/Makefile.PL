@@ -11,6 +11,8 @@ requires 'LWP'              => '6.02';
 requires 'LWP::UserAgent'   => '6.02';
 requires 'JSON'             => '2.53';
 requires 'HTTP::Cookies'    => '6.00';
+# Confirmed Dep Requirement CPAN Ticket#: 74867
+# https://rt.cpan.org/Ticket/Display.html?id=74867
 requires 'Moose'            => '2.0200';
 requires 'common::sense'    => '3.4';
 
