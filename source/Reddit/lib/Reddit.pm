@@ -1,8 +1,8 @@
 package Reddit;
 
-our $VERSION = '0.3.01';
+our $VERSION = '0.3.02';
 
-use 5.012004;
+use 5.010001;
 use Data::Dumper;
 
 use common::sense;
