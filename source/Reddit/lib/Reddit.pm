@@ -346,6 +346,8 @@ None.
 
 =head1 Provided Methods
 
+=over 2
+
 =item B<submit_link($title, $url, $subreddit)>
   $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
 This method posts links to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
@@ -368,6 +370,8 @@ Submit methods return cannonical thing IDs, L<See the FULLNAME Glossary|https://
 
 The post_id is the alphanumeric string after the name of the subreddit, before the title of the post
 The comment_id is the alphanumeric string after the title of the post
+
+=back
 
 =head1 SEE ALSO
 
