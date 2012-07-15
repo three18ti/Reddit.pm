@@ -160,6 +160,16 @@ sub _parse_link {
     return 't3_' . $id;
 }
 
+sub _parse_comment_id {
+# ID's require a t3_ or t1_ prefix depending on whether it is a
+# post or comment id respectively.
+	my $id = shift;
+	if (length($id) == 5){ $id = "t3_" . $id}
+	elsif (length($id) == 7){ $id = "t1_" . $id}
+	else { die "Invalid ID length"}
+	return $id;
+}
+
 # Submit link to reddit
 sub submit_link {
     my $self = shift;
@@ -217,7 +227,7 @@ sub submit_story {
 sub comment {
     my $self = shift;
     my ($thing_id, $comment) = @_;
-
+    $thing_id = &_parse_comment_id($thing_id);
     my $response = $self->post($self->comment_api,
         {
             thing_id    => $thing_id,
