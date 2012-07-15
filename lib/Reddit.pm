@@ -1,8 +1,8 @@
 package Reddit;
 
-our $VERSION = '0.20.moose';
+our $VERSION = '0.3.02';
 
-use 5.012004;
+use 5.010001;
 use Data::Dumper;
 
 use common::sense;
@@ -12,6 +12,12 @@ use HTTP::Cookies;
 use LWP::UserAgent;
 
 use Moose;
+
+# for testing purposes only
+#use lib './';
+
+use Reddit::Type::User;
+#use Reddit::Type::Subreddit;
 
 has 'base_url' => (
 	is	=> 'ro',
@@ -47,6 +53,13 @@ has 'comment_api' => (
 	default => sub { $_[0]->api_url . 'comment' },	
 );
 
+has 'vote_api' => (
+	is => 'ro',
+	isa => 'Str',
+	lazy	=> 1,
+	default => sub { $_[0]->api_url . 'vote' },	
+);
+
 has 'api_type'	=> (
 	is => 'ro',
 	isa => 'Str',
@@ -60,6 +73,7 @@ has 'ua' => (
 #    handles => qr/^(?:head|get|post|agent|request.*)/,
 	handles => { 
 		post				=> 'post',
+		get					=> 'get',
 		agent_cookie_jar 	=> 'cookie_jar' 
 	}
 );
@@ -86,6 +100,27 @@ has 'subreddit' => (
 has 'modhash' => (
 	is => 'rw',
 	isa => 'Str',
+);
+
+has '_user_search_name' => (
+	is => 'rw',
+	isa => 'Str',
+	lazy => 1,
+	default => '',
+);
+
+has 'about_user_api' => (
+	is => 'rw',
+	isa => 'Str',
+	lazy => 1,
+	default => sub { $_[0]->base_url . 'user/' . $_[0]->_user_search_name . '/about.json' },
+);
+
+has 'user_info' => (
+	is => 'rw',
+	isa => 'Reddit::Type::User',
+	lazy => 1,
+	default => sub { Reddit::Type::User->new },
 );
 
 sub _login {
@@ -125,6 +160,16 @@ sub _parse_link {
 
     my ($id) = $link =~ /comments\/(\w+)\//i;
     return 't3_' . $id;
+}
+
+sub _parse_comment_id {
+# ID's require a t3_ or t1_ prefix depending on whether it is a
+# post or comment id respectively.
+	my $id = shift;
+	if (length($id) == 5){ $id = "t3_" . $id}
+	elsif (length($id) == 7){ $id = "t1_" . $id}
+	else { die "Invalid ID length"}
+	return $id;
 }
 
 # Submit link to reddit
@@ -184,8 +229,8 @@ sub submit_story {
 sub comment {
     my $self = shift;
     my ($thing_id, $comment) = @_;
-
-    my $response = $self->ua->post($self->comment_api,
+    $thing_id = &_parse_comment_id($thing_id);
+    my $response = $self->post($self->comment_api,
         {
             thing_id    => $thing_id,
             text        => $comment,
@@ -197,6 +242,57 @@ sub comment {
     return $decoded->{jquery}[18][3][0][0]->{data}{id};
 }
 
+sub get_user_info {
+	my $self = shift;
+	my $search_name = shift;
+
+	$self->_user_search_name($search_name);
+
+	my $response = $self->get ($self->about_user_api);
+	my $decoded = from_json $response->content;
+	my $data = $decoded->{data};
+
+	while (my ($key, $value) = each %{$data}) {
+   		if (JSON::is_bool ref $value){
+	    	$value = $value ? '1' : '0' ;
+		}
+		$self->user_info->$key($value);	
+	}
+	return $self->user_info;
+}
+
+sub vote {
+	my $self = shift; 
+	my ($thing_id, $direction) = @_;
+	
+	given ($direction) {
+		when ( /up/i || 1) {
+			$direction = 1;
+		}
+		when ( /down/i || -1) {
+			$direction = -1;
+		}
+		when ( /rescind/i || 0 ) {
+			$direction = 0;
+		}
+		default {
+			warn "Please enter a valid direction";
+			return 0;
+		}
+	}
+
+	my $response = $self->post ( $self->vote_api, 
+		{
+			id	=> $thing_id,
+			dir => $direction,
+			uh	=> $self->modhash
+		}
+	);
+	
+	return $response->content;
+}
+
+
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
@@ -207,6 +303,8 @@ __END__
 =head1 NAME
 
 Reddit - Perl extension for http://www.reddit.com
+
+See github for the most up to date version: https://github.com/three18ti/Reddit.pm
 
 =head1 SYNOPSIS
 
@@ -260,6 +358,8 @@ None.
 
 =head1 Provided Methods
 
+=over 2
+
 =item B<submit_link($title, $url, $subreddit)>
   $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
 This method posts links to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
@@ -282,6 +382,8 @@ Submit methods return cannonical thing IDs, L<See the FULLNAME Glossary|https://
 
 The post_id is the alphanumeric string after the name of the subreddit, before the title of the post
 The comment_id is the alphanumeric string after the title of the post
+
+=back
 
 =head1 SEE ALSO
 
