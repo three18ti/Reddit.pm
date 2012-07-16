@@ -309,6 +309,8 @@ sub submit_story {
     return $id, $link;
 }
 
+=over 2
+
 =item B<comment($post_id, $comment)>
    
 To post a top level comment to a URL or .self post 
