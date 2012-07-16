@@ -327,6 +327,8 @@ The comment_id is the alphanumeric string after the title of the post
 
 =back
 
+=cut
+
 sub comment {
     my $self = shift;
     my ($thing_id, $comment) = @_;
