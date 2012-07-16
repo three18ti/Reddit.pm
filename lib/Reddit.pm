@@ -1,17 +1,72 @@
 package Reddit;
-
-our $VERSION = '0.3.02';
-
 use 5.010001;
-use Data::Dumper;
 
-use common::sense;
+use strict;
+use warnings;
 
 use JSON;
 use HTTP::Cookies;
 use LWP::UserAgent;
 
 use Moose;
+
+=head1 NAME
+
+Reddit - Perl extension for http://www.reddit.com
+
+See github for the most up to date/development branch: https://github.com/three18ti/Reddit.pm
+
+=head1 SYNOPSIS
+
+  use Reddit;
+  
+  # instantatiate a new reddit object
+  # Automajically handles logging in and cookie handling
+  $r = Reddit->new(
+      {
+          user_name => 'Foo', 
+		  password  => 'Bar', 
+		  subreddit => 'Perl'
+	  }
+  );
+
+  # Submit a link
+  # $title, $url, $subreddit
+  # This overrides a subreddit set duriing instantiation
+  $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
+
+  # Submit a Self Post
+  # $title, $text, $subreddit
+  # This overrides a subreddit set during instantiation
+  $r->submit_story( 'Self.test', 'Some Text Here', 'shareCoding');  
+
+  # Post a top level comment to a URL or .self post 
+  $r->comment($post_id, $comment);
+  
+  # Post a reply to a comment
+  $r->comment($comment_id, $comment);
+
+=head1 DESCRIPTION
+
+Perl module for interacting with Reddit.
+
+This module is still largely inprogress.
+
+=head2 Requires
+
+  common::sense
+  LWP::UserAgent
+  JSON
+  HTTP::Cookies
+
+  For Testing:
+  Data::Dumper
+
+=head2 EXPORT
+
+None.
+
+=cut
 
 # for testing purposes only
 #use lib './';
@@ -172,6 +227,21 @@ sub _parse_comment_id {
 	return $id;
 }
 
+=head1 Provided Methods
+
+=over 2
+
+=item B<submit_link($title, $url, $subreddit)>
+
+    $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
+
+This method posts links to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
+$subreddit is required in one place or the other, subreddit specified here will take precedence over the subreddit specified at time of instantiation.
+
+=back
+
+=cut
+
 # Submit link to reddit
 sub submit_link {
     my $self = shift;
@@ -200,6 +270,19 @@ sub submit_link {
     return $id, $link;
 }
 
+=over 2
+
+=item B<submit_story($title, $text, $subreddit)>
+
+    $r->submit_story( 'Self.test', 'Some Text Here', 'shareCoding');
+
+This method makes a Self.post to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
+$subreddit is required in one place or the other, subreddit specified here will take precedence over the subreddit specified at time of instantiation.
+
+=back
+
+=cut
+
 sub submit_story {
     my $self = shift;
     my ($title, $text, $subreddit) = @_;
@@ -225,6 +308,24 @@ sub submit_story {
 
     return $id, $link;
 }
+
+=item B<comment($post_id, $comment)>
+   
+To post a top level comment to a URL or .self post 
+
+    $r->comment($post_id, $comment);
+
+To post a reply to a comment
+    
+    $r->comment($comment_id, $comment);
+
+This methid requires you pass in the cannonical thing ID with the correct thing prefix.
+Submit methods return cannonical thing IDs, L<See the FULLNAME Glossary|https://github.com/reddit/reddit/wiki/API> for futher information
+
+The post_id is the alphanumeric string after the name of the subreddit, before the title of the post
+The comment_id is the alphanumeric string after the title of the post
+
+=back
 
 sub comment {
     my $self = shift;
@@ -300,90 +401,6 @@ __PACKAGE__->meta->make_immutable;
 1;
 __END__
 
-=head1 NAME
-
-Reddit - Perl extension for http://www.reddit.com
-
-See github for the most up to date version: https://github.com/three18ti/Reddit.pm
-
-=head1 SYNOPSIS
-
-  use Reddit;
-  
-  # instantatiate a new reddit object
-  # Automajically handles logging in and cookie handling
-  $r = Reddit->new(
-      {
-          user_name => 'Foo', 
-		  password  => 'Bar', 
-		  subreddit => 'Perl'
-	  }
-  );
-
-  # Submit a link
-  # $title, $url, $subreddit
-  # This overrides a subreddit set duriing instantiation
-  $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
-
-  # Submit a Self Post
-  # $title, $text, $subreddit
-  # This overrides a subreddit set during instantiation
-  $r->submit_story( 'Self.test', 'Some Text Here', 'shareCoding');  
-
-  # Post a top level comment to a URL or .self post 
-  $r->comment($post_id, $comment);
-  
-  # Post a reply to a comment
-  $r->comment($comment_id, $comment);
-
-=head1 DESCRIPTION
-
-Perl module for interacting with Reddit.
-
-This module is still largely inprogress.
-
-=head2 Requires
-
-  common::sense
-  LWP::UserAgent
-  JSON
-  HTTP::Cookies
-
-  For Testing:
-  Data::Dumper
-
-=head2 EXPORT
-
-None.
-
-=head1 Provided Methods
-
-=over 2
-
-=item B<submit_link($title, $url, $subreddit)>
-  $r->submit_link( 'Test', 'http://example.com', 'NotPerl');
-This method posts links to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
-$subreddit is required in one place or the other, subreddit specified here will take precedence over the subreddit specified at time of instantiation.
-
-=item B<submit_story($title, $text, $subreddit)>
-  $r->submit_story( 'Self.test', 'Some Text Here', 'shareCoding');
-This method makes a Self.post to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
-$subreddit is required in one place or the other, subreddit specified here will take precedence over the subreddit specified at time of instantiation.
-
-=item B<comment($post_id, $comment)>
-   
-To post a top level comment to a URL or .self post 
-  $r->comment($post_id, $comment);
-
-To post a reply to a comment
-  $r->comment($comment_id, $comment);
-This methid requires you pass in the cannonical thing ID with the correct thing prefix.
-Submit methods return cannonical thing IDs, L<See the FULLNAME Glossary|https://github.com/reddit/reddit/wiki/API> for futher information
-
-The post_id is the alphanumeric string after the name of the subreddit, before the title of the post
-The comment_id is the alphanumeric string after the title of the post
-
-=back
 
 =head1 SEE ALSO
 
