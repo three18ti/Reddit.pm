@@ -101,6 +101,14 @@ has 'submit_api' => (
 	default => sub { $_[0]->api_url . 'submit' },	
 );
 
+
+has 'info_api' => (
+	 is => 'ro',
+	 isa => 'Str',
+	 lazy => 1,
+	 default => sub { $_[0]->api_url . 'info.json' },
+);
+
 has 'comment_api' => (
 	is => 'ro',
 	isa => 'Str',
@@ -178,6 +186,13 @@ has 'user_info' => (
 	default => sub { Reddit::Type::User->new },
 );
 
+has '_link_hash' => (
+	is => 'rw',
+	isa => 'HashRef',
+	lazy => 0,
+	default => sub {{}},
+);
+
 sub _login {
 	my $self = shift;
 	
@@ -213,9 +228,31 @@ sub _parse_link {
     my $self = shift;
     my $link = shift;
 
-    my ($id) = $link =~ /comments\/(\w+)\//i;
+    my ($id) = $link =~ /www\.reddit\.com\/r\/[\w]+\/comments\/(\w+)\//i;
+#   make regex more stringent to ensure link is from reddit.
     return 't3_' . $id;
 }
+
+sub _unzip_hash{
+	my $self = shift;
+	# A sub which will take nested values and hashes references and pull them into global _link_hash 
+	my %oldhash = %{(shift)};
+	while(my($key,$value) = each %oldhash){
+		if(UNIVERSAL::isa($value, "ARRAY")){$value = @$value[0]}; 
+		#^ The link json includes a needless array which contains							  
+		# an array container over a reference. Simply strips array.
+
+		if(UNIVERSAL::isa($value, "HASH")){$self->_unzip_hash($value)} #Recursive call
+		else{ 
+			if(!defined $value){$value = 0};
+			$key .= "_sub" if(${$self->_link_hash}{$key});
+			$self->_link_hash->{$key}=$value; 
+			#print("\nADDING $key to _list_hash"); 
+			#^ Used for debugging. Shows when (non-hash) key/value pairs are found.
+		}
+	}
+}
+
 
 sub _parse_comment_id {
     # ID's require a t3_ or t1_ prefix depending on whether it is a
@@ -355,15 +392,9 @@ sub get_user_info {
 
 	my $response = $self->get ($self->about_user_api);
 	my $decoded = from_json $response->content;
-	my $data = $decoded->{data};
-
-	while (my ($key, $value) = each %{$data}) {
-   		if (JSON::is_bool ref $value){
-	    	$value = $value ? '1' : '0' ;
-		}
-		$self->user_info->$key($value);	
-	}
-	return $self->user_info;
+	my %data = %{$decoded->{data}};
+	foreach(keys %data){$data{$_} = !$data{$_} ? '0' : $data{$_}} 
+	return %data;	
 }
 
 sub vote {
@@ -397,7 +428,15 @@ sub vote {
 	return $response->content;
 }
 
-
+sub get_link_info{
+        my $self = shift;
+	my $link = shift;
+        $link = $self->_parse_link($link);
+	my $response = $self->get($self->info_api . "?id=$link");
+	my %content_hash = %{from_json $response->content};
+	$self->_unzip_hash(\%content_hash);
+	return $self->_link_hash;
+}
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
