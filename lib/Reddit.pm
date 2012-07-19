@@ -446,7 +446,8 @@ Retreives information about a reddit url and returns it in the form of a hashref
 
     $r->get_link_info($reddit_post_url);
 
-This method requires you submit a valid, full-path url of a reddit post. Ex: "www.reddit.com/r/gif/comments/wua4q/i_love_a_toilet_paper/"
+This method requires you submit a valid url of a reddit post. Ex: "www.reddit.com/r/gif/comments/wua4q/i_love_a_toilet_paper/"
+The Reddit info api is also supports other functions, they have yet to be implemented in this module.
 
 =back
 
