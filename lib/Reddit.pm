@@ -228,14 +228,14 @@ sub _parse_link {
     my $self = shift;
     my $link = shift;
 
-    my ($id) = $link =~ /www\.reddit\.com\/r\/[\w]+\/comments\/(\w+)\//i;
-#   make regex more stringent to ensure link is from reddit.
+    my ($id) = $link =~ /comments\/(\w+)\//i;
     return 't3_' . $id;
 }
 
 sub _unzip_hash{
+# A sub which will take nested values and hashes references and pull them into global _link_hash.
+# sub is used solely for &get_link_info at the moment.
 	my $self = shift;
-	# A sub which will take nested values and hashes references and pull them into global _link_hash 
 	my %oldhash = %{(shift)};
 	while(my($key,$value) = each %oldhash){
 		if(UNIVERSAL::isa($value, "ARRAY")){$value = @$value[0]}; 
@@ -394,7 +394,7 @@ sub get_user_info {
 	my $decoded = from_json $response->content;
 	my %data = %{$decoded->{data}};
 	foreach(keys %data){$data{$_} = !$data{$_} ? '0' : $data{$_}} 
-	return %data;	
+	return \%data;	
 }
 
 sub vote {
@@ -437,6 +437,20 @@ sub get_link_info{
 	$self->_unzip_hash(\%content_hash);
 	return $self->_link_hash;
 }
+
+=over 2
+
+=item B<get_link_info($reddit_url)>
+   
+Retreives information about a reddit url and returns it in the form of a hashref. 
+
+    $r->get_link_info($reddit_post_url);
+
+This method requires you submit a valid, full-path url of a reddit post. Ex: "www.reddit.com/r/gif/comments/wua4q/i_love_a_toilet_paper/"
+
+=back
+
+=cut
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
