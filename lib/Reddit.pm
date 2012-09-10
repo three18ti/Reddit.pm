@@ -463,7 +463,6 @@ sub get_subreddit{
 	delete $args->{'sort'};
 	delete $args->{'subreddit'};
 	foreach(keys %$args){$other .= "&$_=" . $args->{$_}}; #fill other arguments
-	print("\n>>>> $other <<<<\n");
 	my @posts;
 	my $response = $self->get("http://www.reddit.com/r/$subred/$sort.json$other");
 	my $container = from_json($response->content);
