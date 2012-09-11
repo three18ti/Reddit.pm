@@ -239,7 +239,7 @@ sub _unzip_hash{
 	my %oldhash = %{(shift)};
 	while(my($key,$value) = each %oldhash){
 		if(UNIVERSAL::isa($value, "ARRAY")){$value = @$value[0]}; 
-		#^ The link json includes a needless array which contains							  
+		#^ The link json includes a needless array which contains		  
 		# an array container over a reference. Simply strips array.
 
 		if(UNIVERSAL::isa($value, "HASH")){$self->_unzip_hash($value)} #Recursive call
@@ -397,6 +397,7 @@ sub get_user_info {
 	return \%data;	
 }
 
+
 sub vote {
 	my $self = shift; 
 	my ($thing_id, $direction) = @_;
@@ -452,6 +453,41 @@ The Reddit info api is also supports other functions, they have yet to be implem
 =back
 
 =cut
+
+sub get_subreddit{
+	my $self = shift;
+	my $args = shift;
+	my $subred = ($args->{'subreddit'} || $self->subreddit || "all"); 
+	my $sort = ($args->{'sort'} || "hot");
+	my $other = "?sort=$sort";
+	delete $args->{'sort'};
+	delete $args->{'subreddit'};
+	foreach(keys %$args){$other .= "&$_=" . $args->{$_}}; #fill other arguments
+	my @posts;
+	my $response = $self->get("http://www.reddit.com/r/$subred/$sort.json$other");
+	my $container = from_json($response->content);
+	push (@posts, $_->{'data'}) foreach @{$container->{'data'}->{'children'}};
+	return @posts;
+}
+
+=over 2
+
+=item B<get_subreddit()>
+   
+Retreives posts from a subreddit and returns it in the form of an array of hashrefs.
+Each hashref contains the information of an individual post.
+
+	$r->get_subreddit({'sort'=>'new','limit'=>'30','subreddit'=>'perl'});
+	$r->get_subreddit()
+
+Acceptable keys are: sort, limit, subreddit, before, after, show, count, target. Refer to the Reddit api for more information concerning their purpose.
+
+This method will default to the first 25 hot sort from the 'all' subreddit (unless $self->$subreddit is defined - in which case it will use that value).
+
+=back
+
+=cut
+
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
