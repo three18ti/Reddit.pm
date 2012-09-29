@@ -221,7 +221,7 @@ sub _parse_modhash {
     my $response    = shift;
 
     my $decoded = from_json ($response->content);
-    $self->modhash ($decoded->{json}{data}{modhash});
+    $self->modhash($decoded->{json}{data}{modhash});
 }
 
 sub _parse_link {
@@ -397,6 +397,56 @@ sub get_user_info {
 	return \%data;	
 }
 
+###############################################
+#             _user_get			      #	
+###############################################
+# Template method for get_user_* methods      #
+###############################################
+sub _user_get {
+	my $self = shift;
+	my $type = shift;
+	my $args = shift;
+	my $user = $args->{'username'} && delete  $args->{'username'} || die("Must supply a username to get_user_$type");
+	my $other = "?";
+	foreach(keys %$args){$other .= ("$_" . $args->{$_} . "&")};
+	my $response = $self->get("http://www.reddit.com/user/$user/$type.json$other");
+	my %packaged = %{from_json($response->content)};
+	my @posts;
+	foreach(@{$packaged{'data'}->{'children'}}){push(@posts,$_->{'data'})};
+	return @posts;
+} 
+
+###############################################
+#             get_user_*		      #
+###############################################
+# Methods which utilize _user_get	      #
+###############################################
+
+sub get_user_overview{ 
+	my $self = shift;
+	return $self->_user_get("overview",shift);
+}
+sub get_user_comments{ 
+	my $self = shift;
+	return $self->_user_get("comments", shift);
+}
+sub get_user_submitted{ 
+	my $self = shift;
+	return $self->_user_get("submitted", shift);
+}
+sub get_user_liked{
+	my $self = shift;
+	return $self->_user_get("liked", shift);
+}
+sub get_user_disliked{
+	my $self = shift;
+	return $self->_user_get("disliked", shift);
+}
+sub get_user_saved{
+	my $self = shift;
+	return $self->_user_get("saved", shift);
+}
+#################################################
 
 sub vote {
 	my $self = shift; 
@@ -428,6 +478,20 @@ sub vote {
 	
 	return $response->content;
 }
+
+=over 2
+
+=item B<vote($thing_id, $direction)>
+   
+Up/Down vote a post.
+
+    $r->vote($thing_id,$direction);
+
+Where $direction is one of: up, down, rescind
+
+=back
+
+=cut
 
 sub get_link_info{
         my $self = shift;
@@ -483,6 +547,24 @@ Each hashref contains the information of an individual post.
 Acceptable keys are: sort, limit, subreddit, before, after, show, count, target. Refer to the Reddit api for more information concerning their purpose.
 
 This method will default to the first 25 hot sort from the 'all' subreddit (unless $self->$subreddit is defined - in which case it will use that value).
+
+=back
+
+=cut
+
+sub username_available{
+	my $self = shift;
+	my $user = shift;
+	my $response = $self->get("http://www.reddit.com/api/username_available.json?user=$user");
+	returns $response->content;
+}
+=over 2
+
+=item B<username_available($username)>
+
+Checks username availability. Returns 'true' for available and 'false' for unavailable.   
+
+	$r->username_available('billy_bob_joe')
 
 =back
 
