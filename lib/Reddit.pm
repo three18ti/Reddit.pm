@@ -151,7 +151,7 @@ has 'cookie_jar' => (
 has [ 'user_name', 'password', ] => (
 	is => 'rw',
 	isa => 'Str',
-	required => 1,	
+	required => 0,	
 	trigger => \&_login,
 );
 
