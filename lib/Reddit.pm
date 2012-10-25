@@ -552,11 +552,61 @@ This method will default to the first 25 hot sort from the 'all' subreddit (unle
 
 =cut
 
+sub get_comments{
+	my $self = shift;
+	my $args = shift;
+	my $id = $args->{'id'};
+	delete $args->{'id'};
+	my $other = "?";
+	foreach(keys %$args){$other .= "$_=" . $args->{$_} . "&"}; #fill other arguments
+	my $response = $self->get("http://www.reddit.com/comments/$id.json$other");
+	# $response is an arrayref.
+	my @sort = @{from_json($response->content)};
+	$sort[0] = @{$sort[0]->{'data'}->{'children'}}[0]->{'data'};
+	# ^ Removes empty containers from post info.
+	$sort[1] = $sort[1]->{'data'}->{'children'};
+	# ^ Removes empty container from top level reply info. Subsequent levels remain.
+	return \@sort;
+	
+	#!! Unique return. Returns a 2 element Arrayref.
+	# $sort[0] contains a hashref of link post info. (This is redundant with &get_link_info)
+	# $sort[1] contains an arrayref of reply info. Each top level post is an element.
+	#	Replies to replies are in the 'reply' hash key. It nests itself. 
+	# Ex: ${$a}[1][0]->{'data'}->{'body'}
+	#   ^ Contains text of first top level comment.
+	# Ex: ${$a}[1][0]->{'data'}->{'replies'}->{'data'}->{'children'}[0]->{'data'}->{'body'}
+	#  ^ Contains the first response to the first top level comment.
+	# The empty containers make it longer than it should be, but potentially parsing
+	# and removing thousands of these comments did not seem like a very efficient task for 
+	# the payoff.
+}
+=over 2
+
+=item B<get_comments({'id'=>'11xyiy', 'sort'=>'new', 'limit'=>20, 'depth'=>4,)>
+
+Returns the comments of a post in the form of a 2 element arrayref.
+
+First element contains original post info. 
+	Ex: ${$a}[0]->{'selftext'}; #Will return selftext of the article/post.
+
+Second element contains reply info.
+	Ex: ${$a}[1][0]->{'data'}->{'body'}; #Will return first top level comment to article.
+
+Replies are nested under their parent post via the 'replies' hash key value.
+	Ex: ${$a}[1][1]->{'data'}->{'replies'}->{'data'}->{'children'}[0]->{'data'}->{'body'};
+	# Will return first reply to second top level comment. 
+Examples:
+
+=back
+
+=cut
+	
+
 sub username_available{
 	my $self = shift;
 	my $user = shift;
 	my $response = $self->get("http://www.reddit.com/api/username_available.json?user=$user");
-	returns $response->content;
+	return $response->content;
 }
 =over 2
 
