@@ -69,13 +69,6 @@ None.
 
 =cut
 
-# for testing purposes only
-#use lib './';
-
-#use Reddit::Type::User;
-#use Reddit::Type::Subreddit;
-
-
 has 'ua' => (
     is  => 'rw',
     isa => 'LWP::UserAgent',
