@@ -268,7 +268,6 @@ sub submit_story {
             text     => $text,
         },
     );
-    print("\n#success?# $newpost->success   #\n\n");
 
     my $json_content    = $newpost->content;
     my $decoded         = from_json $json_content;
@@ -404,7 +403,6 @@ sub get_user_saved{
 sub vote {
 	my $self = shift; 
 	my ($thing_id, $direction) = @_;
-	print("## $thing_id    $direction ##\n");
 	
 	given ($direction) {
 		when ( /up/i || 1) {
@@ -424,7 +422,6 @@ sub vote {
 
 	$thing_id = $self->_parse_comment_id($thing_id); #adds prefix (t1_ or t3_) if necessary.
 	
-	print("\n\n$thing_id    $direction   $self->modhash\n\n");
 
 	my $response = $self->post ( 'http://www.reddit.com/api/vote', 
 		{
