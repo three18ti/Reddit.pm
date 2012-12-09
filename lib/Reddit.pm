@@ -8,7 +8,7 @@ use JSON;
 use HTTP::Cookies;
 use LWP::UserAgent;
 
-use Moose;
+use Mouse;
 
 =head1 NAME
 
@@ -29,6 +29,7 @@ See github for the most up to date/development branch: https://github.com/three1
 		  subreddit => 'Perl'
 	  }
   );
+  # user_name, password are not required if accessing information which does not require login.
 
   # Submit a link
   # $title, $url, $subreddit
@@ -71,69 +72,14 @@ None.
 # for testing purposes only
 #use lib './';
 
-use Reddit::Type::User;
+#use Reddit::Type::User;
 #use Reddit::Type::Subreddit;
 
-has 'base_url' => (
-	is	=> 'ro',
-	isa => 'Str',
-	default => 'http://www.reddit.com/',
-);
-
-has 'api_url' => (
-	is	=> 'ro',
-	isa => 'Str',
-	lazy	=> 1,
-	default => sub { $_[0]->base_url . 'api/' },
-);
-
-has 'login_api' => (
-	is => 'ro',
-	isa => 'Str',
-	lazy	=> 1,
-	default => sub { $_[0]->api_url . 'login' },
-); 
-
-has 'submit_api' => (
-	is => 'ro',
-	isa => 'Str',
-	lazy	=> 1,
-	default => sub { $_[0]->api_url . 'submit' },	
-);
-
-
-has 'info_api' => (
-	 is => 'ro',
-	 isa => 'Str',
-	 lazy => 1,
-	 default => sub { $_[0]->api_url . 'info.json' },
-);
-
-has 'comment_api' => (
-	is => 'ro',
-	isa => 'Str',
-	lazy	=> 1,
-	default => sub { $_[0]->api_url . 'comment' },	
-);
-
-has 'vote_api' => (
-	is => 'ro',
-	isa => 'Str',
-	lazy	=> 1,
-	default => sub { $_[0]->api_url . 'vote' },	
-);
-
-has 'api_type'	=> (
-	is => 'ro',
-	isa => 'Str',
-	default => 'json',
-);
 
 has 'ua' => (
     is  => 'rw',
     isa => 'LWP::UserAgent',
     default => sub { LWP::UserAgent->new },
-#    handles => qr/^(?:head|get|post|agent|request.*)/,
 	handles => { 
 		post				=> 'post',
 		get					=> 'get',
@@ -158,32 +104,12 @@ has [ 'user_name', 'password', ] => (
 has 'subreddit' => (
 	is => 'rw',
 	isa => 'Str',
+	default => sub {'all'},
 );
 
 has 'modhash' => (
 	is => 'rw',
 	isa => 'Str',
-);
-
-has '_user_search_name' => (
-	is => 'rw',
-	isa => 'Str',
-	lazy => 1,
-	default => '',
-);
-
-has 'about_user_api' => (
-	is => 'rw',
-	isa => 'Str',
-	lazy => 1,
-	default => sub { $_[0]->base_url . 'user/' . $_[0]->_user_search_name . '/about.json' },
-);
-
-has 'user_info' => (
-	is => 'rw',
-	isa => 'Reddit::Type::User',
-	lazy => 1,
-	default => sub { Reddit::Type::User->new },
 );
 
 has '_link_hash' => (
@@ -193,12 +119,17 @@ has '_link_hash' => (
 	default => sub {{}},
 );
 
+
+#-----------------------------------#
+#	HIDDEN METHODS		    #
+#-----------------------------------#
+
 sub _login {
 	my $self = shift;
 	
-	my $response = $self->ua->post($self->login_api,
+	my $response = $self->ua->post('http://www.reddit.com/api/login',
         {
-            api_type    => $self->api_type,
+            api_type    => 'json',
             user        => $self->user_name,
             passwd      => $self->password,
         }
@@ -224,10 +155,11 @@ sub _parse_modhash {
     $self->modhash($decoded->{json}{data}{modhash});
 }
 
-sub _parse_link {
+sub _parse_link {  
+# Returns the ID of a link/self.post from a full url. Prepends t3_.
+# Example:  www.reddit.com/r/linux/comments/14hzj3/some_title/ -> t3_14hzj3
     my $self = shift;
     my $link = shift;
-
     my ($id) = $link =~ /comments\/(\w+)\//i;
     return 't3_' . $id;
 }
@@ -257,10 +189,18 @@ sub _unzip_hash{
 sub _parse_comment_id {
     # ID's require a t3_ or t1_ prefix depending on whether it is a
     # post or comment id respectively.
+	my $self = shift;
 	my $id = shift;
-	if (length($id) == 5){ $id = "t3_" . $id}
-	elsif (length($id) == 7){ $id = "t1_" . $id}
-	else { die "Invalid ID length"}
+
+	if ($id =~ /^t[13]_/){return $id}; #return ID unchanged if it already has prefix.
+
+	if (length($id) == 5 || length($id) == 6){ $id = "t3_" . $id} #add prefix for link/self.post id
+
+	elsif (length($id) == 7){ $id = "t1_" . $id} #add prefix for comment id
+	
+	else { warn "Unknown ID. If action does not happen, ensure ID is correct."}
+	# Warn if it doesn't match anything
+
 	return $id;
 }
 
@@ -286,7 +226,7 @@ sub submit_link {
 
     my $kind        = 'link';
 
-    my $newpost     = $self->ua->post($self->submit_api,
+    my $newpost     = $self->ua->post('http://www.reddit.com/api/submit',
         {
             uh      => $self->modhash,
             kind    => $kind,
@@ -301,8 +241,8 @@ sub submit_link {
     my $decoded         = from_json $json_content;
 
     #returns link to new post if successful
-    my $link = $decoded->{jquery}[18][3][0];
-    my $id = $self->parse_link($link);
+    my $link = $decoded->{jquery}[18][3][0]; # get id of your post from response
+    my $id = $self->_parse_link($link); # format id correctly
 
     return $id, $link;
 }
@@ -311,7 +251,7 @@ sub submit_link {
 
 =item B<submit_story($title, $text, $subreddit)>
 
-    $r->submit_story( 'Self.test', 'Some Text Here', 'shareCoding');
+    $r->submit_story('Title', 'Body text', 'shareCoding');
 
 This method makes a Self.post to the specified subreddit.  The subreddit parameter is optional if it is not set at the time of instantiation
 $subreddit is required in one place or the other, subreddit specified here will take precedence over the subreddit specified at time of instantiation.
@@ -325,7 +265,7 @@ sub submit_story {
     my ($title, $text, $subreddit) = @_;
  
     my $kind        = 'self';
-    my $newpost     = $self->post($self->submit_api,
+    my $newpost     = $self->post('http://www.reddit.com/api/submit',
         {
             uh       => $self->modhash,
             kind     => $kind,
@@ -335,12 +275,33 @@ sub submit_story {
             text     => $text,
         },
     );
+    print("\n#success?# $newpost->success   #\n\n");
 
     my $json_content    = $newpost->content;
     my $decoded         = from_json $json_content;
+    
+
+   #---------- CAPTCHA -------#
+    my $captcha = $decoded->{jquery}[12][3][0];
+    if($captcha eq ".error.BAD_CAPTCHA.field-captcha"){ #If given captcha 
+	my $captcha_id = $decoded->{jquery}[10][3][0]; #Not used yet. Captcha id.
+
+	die("Reddit needs you to verify a captcha in order to post.");
+    }
+   #Catcha will be required for accounts with low karma.
+   # url for captchas: http://www.reddit.com/captcha/captcha_id.png
+   # replace captcha id with value in $captcha_id
+
+   # If you want to resubmit with captcha response:
+   # 
+   # 1. View the captcha by inputing above url into a browser.
+   # 2. Resubmit with 2 more fields in the post:
+   #	* 'iden' => $captcha_id,
+   #	* 'captcha' => $value_of_captcha,
+   #-------------------------#
 
     #returns id and link to new post if successful
-    my $link = $decoded->{jquery}[12][3][0];
+    my $link = $decoded->{jquery}[10][3][0]; 
     my $id = $self->_parse_link($link);
 
     return $id, $link;
@@ -372,7 +333,7 @@ sub comment {
     my $self = shift;
     my ($thing_id, $comment) = @_;
     $thing_id = $self->_parse_comment_id($thing_id);
-    my $response = $self->post($self->comment_api,
+    my $response = $self->post('http://www.reddit.com/api/comment',
         {
             thing_id    => $thing_id,
             text        => $comment,
@@ -387,10 +348,9 @@ sub comment {
 sub get_user_info {
 	my $self = shift;
 	my $search_name = shift;
+	my $search_url = 'http://www.reddit.com/usr/'. $search_name .'/about.json';
 
-	$self->_user_search_name($search_name);
-
-	my $response = $self->get ($self->about_user_api);
+	my $response = $self->get ($search_url);
 	my $decoded = from_json $response->content;
 	my %data = %{$decoded->{data}};
 	foreach(keys %data){$data{$_} = !$data{$_} ? '0' : $data{$_}} 
@@ -451,6 +411,7 @@ sub get_user_saved{
 sub vote {
 	my $self = shift; 
 	my ($thing_id, $direction) = @_;
+	print("## $thing_id    $direction ##\n");
 	
 	given ($direction) {
 		when ( /up/i || 1) {
@@ -468,15 +429,18 @@ sub vote {
 		}
 	}
 
-	my $response = $self->post ( $self->vote_api, 
+	$thing_id = $self->_parse_comment_id($thing_id); #adds prefix (t1_ or t3_) if necessary.
+	
+	print("\n\n$thing_id    $direction   $self->modhash\n\n");
+
+	my $response = $self->post ( 'http://www.reddit.com/api/vote', 
 		{
 			id	=> $thing_id,
 			dir => $direction,
 			uh	=> $self->modhash
 		}
 	);
-	
-	return $response->content;
+	return $response->is_success;	
 }
 
 =over 2
@@ -497,7 +461,7 @@ sub get_link_info{
         my $self = shift;
 	my $link = shift;
         $link = $self->_parse_link($link);
-	my $response = $self->get($self->info_api . "?id=$link");
+	my $response = $self->get('http://www.reddit.com/api/info.json' . "?id=$link");
 	my %content_hash = %{from_json $response->content};
 	$self->_unzip_hash(\%content_hash);
 	return $self->_link_hash;
@@ -621,7 +585,7 @@ Checks username availability. Returns 'true' for available and 'false' for unava
 =cut
 
 
-no Moose;
+no Mouse;
 __PACKAGE__->meta->make_immutable;
 
 1;
