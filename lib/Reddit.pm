@@ -234,7 +234,7 @@ sub submit_link {
     my $decoded         = from_json $json_content;
 
     #returns link to new post if successful
-    my $link = $decoded->{jquery}[18][3][0]; # get id of your post from response
+    my $link = $decoded->{jquery}[16][3][0]; # get id of your post from response
     my $id = $self->_parse_link($link); # format id correctly
 
     return $id, $link;
